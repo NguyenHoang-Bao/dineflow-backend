@@ -4,3 +4,5 @@ data/
 *.iml
 .vscode/
 storage-public/
+serviceAccountKey.json
+*firebase*.json
