@@ -25,17 +25,28 @@ public class FirebaseConfig {
         try {
             InputStream serviceAccount = null;
 
-            // 1. Tìm trong classpath (src/main/resources/serviceAccountKey.json)
-            ClassPathResource resource = new ClassPathResource("serviceAccountKey.json");
-            if (resource.exists()) {
-                serviceAccount = resource.getInputStream();
-                log.info("[Firebase] Tìm thấy file cấu hình serviceAccountKey.json trong classpath.");
+            // 0. Tìm từ biến môi trường FIREBASE_CONFIG_JSON hoặc FIREBASE_CREDENTIALS_PATH
+            String envJson = System.getenv("FIREBASE_CONFIG_JSON");
+            String envPath = System.getenv("FIREBASE_CREDENTIALS_PATH");
+            if (envJson != null && !envJson.isBlank()) {
+                serviceAccount = new java.io.ByteArrayInputStream(envJson.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                log.info("[Firebase] Khởi tạo từ biến môi trường FIREBASE_CONFIG_JSON.");
+            } else if (envPath != null && !envPath.isBlank() && new File(envPath).exists()) {
+                serviceAccount = new FileInputStream(envPath);
+                log.info("[Firebase] Khởi tạo từ đường dẫn chỉ định: {}", envPath);
             } else {
-                // 2. Tìm ở thư mục gốc chạy ứng dụng
-                File rootFile = new File("serviceAccountKey.json");
-                if (rootFile.exists()) {
-                    serviceAccount = new FileInputStream(rootFile);
-                    log.info("[Firebase] Tìm thấy file cấu hình serviceAccountKey.json ở thư mục gốc.");
+                // 1. Tìm trong classpath (src/main/resources/serviceAccountKey.json)
+                ClassPathResource resource = new ClassPathResource("serviceAccountKey.json");
+                if (resource.exists()) {
+                    serviceAccount = resource.getInputStream();
+                    log.info("[Firebase] Tìm thấy file cấu hình serviceAccountKey.json trong classpath.");
+                } else {
+                    // 2. Tìm ở thư mục gốc chạy ứng dụng
+                    File rootFile = new File("serviceAccountKey.json");
+                    if (rootFile.exists()) {
+                        serviceAccount = new FileInputStream(rootFile);
+                        log.info("[Firebase] Tìm thấy file cấu hình serviceAccountKey.json ở thư mục gốc.");
+                    }
                 }
             }
 
