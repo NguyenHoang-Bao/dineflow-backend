@@ -155,6 +155,7 @@ public class Resources {
         m.put("id", r.getId());
         m.put("code", r.getCode());
         m.put("customer_id", r.getCustomerId());
+        m.put("contact_email", r.getContactEmail());
         if (withCustomer) {
             m.put("customer_name", r.getCustomer() == null ? null : r.getCustomer().getName());
             m.put("customer_phone", r.getCustomer() == null ? null : r.getCustomer().getPhone());

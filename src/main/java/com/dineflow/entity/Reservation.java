@@ -73,6 +73,15 @@ public class Reservation extends BaseEntity {
     @Column(name = "deposit_paid_at")
     private Instant depositPaidAt;
 
+    /** Email nhận thông báo đặt bàn (khách có thể điền khác email tài khoản). */
+    @Column(name = "contact_email", length = 100)
+    private String contactEmail;
+
+    public String getRecipientEmail() {
+        if (contactEmail != null && !contactEmail.isBlank()) return contactEmail.trim();
+        return customer != null ? customer.getEmail() : null;
+    }
+
     public Long getCustomerId() {
         return customer == null ? null : customer.getId();
     }

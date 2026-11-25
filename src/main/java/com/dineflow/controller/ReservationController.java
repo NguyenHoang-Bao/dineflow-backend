@@ -18,6 +18,7 @@ import com.dineflow.security.CurrentUser;
 import com.dineflow.security.Roles;
 import com.dineflow.service.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
 import static com.dineflow.common.ApiResponse.error;
 import static com.dineflow.common.ApiResponse.ok;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/reservations")
 @RequiredArgsConstructor
@@ -46,6 +48,7 @@ public class ReservationController {
     private final ReservationService reservationService;
     private final TableService tableService;
     private final NotificationService notifications;
+    private final MailService mailService;
     private final LineItemBuilder builder;
     private final ReservationCheckIn checkIn;
     private final Resources res;
@@ -78,6 +81,7 @@ public class ReservationController {
         }
         in.field("date_time").required("Vui lòng chọn thời gian.").after(Instant.now(), "Thời gian đặt bàn phải ở tương lai.");
         in.field("guest_count").required("Vui lòng nhập số khách.").intBetween(1, 100);
+        in.field("email").email();
         in.field("note").string().max(500);
         in.field("hold").bool();
         boolean hasItems = in.filled("pre_order_items");
@@ -125,6 +129,7 @@ public class ReservationController {
             n.setArea(ts.get(0).getArea());
             n.setDateTime(dateTime);
             n.setGuestCount(guests);
+            n.setContactEmail(in.str("email"));
             n.setNote(in.str("note"));
             n.setStatus(ReservationStatus.UPCOMING);
             n.setHoldExpiresAt(in.bool("hold") ? Instant.now().plus(HOLD_MINUTES, ChronoUnit.MINUTES) : null);
@@ -134,7 +139,10 @@ public class ReservationController {
         });
 
         // Đặt thẳng (không hold) → gửi thông báo xác nhận ngay
-        if (!r.isHeld()) notifications.reservationConfirmed(r);
+        if (!r.isHeld()) {
+            notifications.reservationConfirmed(r);
+            sendConfirmationEmail(r);
+        }
 
         return ok(res.reservation(r, false),
                 r.isHeld() ? "Đã giữ bàn. Vui lòng hoàn tất trong " + HOLD_MINUTES + " phút." : "Đặt bàn thành công.", 201);
@@ -185,7 +193,18 @@ public class ReservationController {
         }
         reservations.save(r);
         notifications.reservationConfirmed(r);
+        sendConfirmationEmail(r);
         return ok(res.reservation(r, false), "Đặt bàn thành công.");
+    }
+
+    private void sendConfirmationEmail(Reservation r) {
+        try {
+            List<DiningTable> ts = res.tablesOf(r);
+            List<String> tableNumbers = ts.stream().map(DiningTable::getNumber).toList();
+            mailService.sendReservationConfirmation(r, tableNumbers);
+        } catch (Exception e) {
+            log.warn("Không thể gửi email xác nhận đặt bàn #{}: {}", r.getCode(), e.getMessage());
+        }
     }
 
     /**
