@@ -50,6 +50,9 @@ public class User extends BaseEntity {
     @Column(name = "remember_token", length = 100)
     private String rememberToken;
 
+    @Column(name = "fcm_token", length = 500)
+    private String fcmToken;
+
     public boolean isActive() {
         return status == UserStatus.ACTIVE;
     }

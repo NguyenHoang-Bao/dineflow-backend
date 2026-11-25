@@ -77,6 +77,14 @@ public class Reservation extends BaseEntity {
     @Column(name = "contact_email", length = 100)
     private String contactEmail;
 
+    /** Đã gửi push notification nhắc lịch lúc 12h trưa ngày hẹn */
+    @Column(name = "reminded_noon_at")
+    private Instant remindedNoonAt;
+
+    /** Đã gửi push notification nhắc trước 2 tiếng trước giờ hẹn */
+    @Column(name = "reminded_2h_at")
+    private Instant reminded2hAt;
+
     public String getRecipientEmail() {
         if (contactEmail != null && !contactEmail.isBlank()) return contactEmail.trim();
         return customer != null ? customer.getEmail() : null;

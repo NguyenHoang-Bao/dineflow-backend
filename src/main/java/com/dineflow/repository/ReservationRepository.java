@@ -44,4 +44,21 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     @Query("select r from Reservation r where r.customer.id = :customerId and (:status is null or r.status = :status) order by r.dateTime desc")
     List<Reservation> findMine(@Param("customerId") Long customerId, @Param("status") ReservationStatus status);
+
+    /** Các đơn trong ngày chưa gửi push nhắc nhở lúc 12h */
+    @Query("select r from Reservation r left join fetch r.customer where r.status = :status"
+            + " and r.holdExpiresAt is null and r.dateTime >= :from and r.dateTime < :to"
+            + " and r.dateTime > :now and r.remindedNoonAt is null")
+    List<Reservation> findUpcomingForNoonReminder(@Param("status") ReservationStatus status,
+                                                  @Param("from") Instant from,
+                                                  @Param("to") Instant to,
+                                                  @Param("now") Instant now);
+
+    /** Các đơn sắp tới giờ hẹn trong khoảng [now, maxTime] chưa gửi nhắc trước 2 tiếng */
+    @Query("select r from Reservation r left join fetch r.customer where r.status = :status"
+            + " and r.holdExpiresAt is null and r.dateTime >= :now and r.dateTime <= :maxTime"
+            + " and r.reminded2hAt is null")
+    List<Reservation> findUpcomingFor2hReminder(@Param("status") ReservationStatus status,
+                                                @Param("now") Instant now,
+                                                @Param("maxTime") Instant maxTime);
 }
