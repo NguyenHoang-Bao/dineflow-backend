@@ -5,6 +5,7 @@ import com.dineflow.entity.DiningTable;
 import com.dineflow.entity.Order;
 import com.dineflow.entity.Reservation;
 import com.dineflow.enums.PaymentStatus;
+import com.dineflow.enums.ReservationStatus;
 import com.dineflow.repository.OrderRepository;
 import com.dineflow.repository.ReservationRepository;
 import com.dineflow.security.Public;
@@ -121,6 +122,7 @@ public class PaymentController {
                 r.setDepositAmount(amount);
                 r.setDepositPaidAt(Instant.now());
                 r.setHoldExpiresAt(null); // Đã cọc thành công, hủy hạn giữ bàn
+                r.setStatus(ReservationStatus.UPCOMING); // Đặt trạng thái về Sắp tới
                 reservations.save(r);
 
                 log.info("[SePay Webhook] Xác nhận tiền cọc thành công cho Lượt đặt bàn #{}", r.getCode());
@@ -167,6 +169,9 @@ public class PaymentController {
 
         // 2. Kiểm tra trong Lượt đặt bàn
         Reservation r = reservations.findByCode(code).orElse(null);
+        if (r == null && !code.contains("-") && code.startsWith("DF")) {
+            r = reservations.findByCode("DF-" + code.substring(2)).orElse(null);
+        }
         if (r != null) {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("type", "reservation");
