@@ -15,13 +15,13 @@ import java.util.Map;
 import static com.dineflow.common.ApiResponse.ok;
 
 /** GET /api/settings — tài khoản nhận chuyển khoản (VietQR) và quy tắc thành viên. */
-@Public
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class SettingsController {
     private final AppProperties props;
 
+    @Public
     @GetMapping("/settings")
     public ResponseEntity<Map<String, Object>> show() {
         Map<String, Object> data = new LinkedHashMap<>();
