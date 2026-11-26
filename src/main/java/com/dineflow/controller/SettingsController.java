@@ -22,6 +22,17 @@ public class SettingsController {
     private final AppProperties props;
 
     @Public
+    @GetMapping({"", "/"})
+    public ResponseEntity<Map<String, Object>> root() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("app", "DineFlow Restaurant Backend API");
+        data.put("status", "running");
+        data.put("version", "1.0.0");
+        data.put("docs", "DineFlow API is up and running with HTTPS");
+        return ok(data, "DineFlow API is up and running!");
+    }
+
+    @Public
     @GetMapping("/settings")
     public ResponseEntity<Map<String, Object>> show() {
         Map<String, Object> data = new LinkedHashMap<>();

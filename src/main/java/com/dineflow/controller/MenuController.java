@@ -5,6 +5,7 @@ import com.dineflow.entity.Food;
 import com.dineflow.repository.CategoryRepository;
 import com.dineflow.repository.FoodRepository;
 import com.dineflow.repository.PromotionRepository;
+import com.dineflow.security.Public;
 import com.dineflow.service.Resources;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import java.util.Map;
 
 import static com.dineflow.common.ApiResponse.ok;
 
+@Public
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
