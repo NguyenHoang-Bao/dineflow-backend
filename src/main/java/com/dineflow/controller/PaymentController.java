@@ -46,8 +46,8 @@ public class PaymentController {
     @Value("${sepay.api-key:}")
     private String sepayApiKey;
 
-    private static final Pattern ORDER_CODE_PATTERN = Pattern.compile("(?:DF-ORD-|ORD-?)(\\d+)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern RES_CODE_PATTERN = Pattern.compile("(?:DF-RES-|RES-?)(\\d+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ORDER_CODE_PATTERN = Pattern.compile("(?i)(?:OD\\d{6}-\\d{4}|DF-ORD-\\d+|ORD-?\\d+)");
+    private static final Pattern RES_CODE_PATTERN = Pattern.compile("(?i)(?:DF-\\d{4,6}|DF-RES-\\d+|RES-?\\d+)");
 
     /**
      * POST /api/payment/sepay-webhook
@@ -91,13 +91,6 @@ public class PaymentController {
         if (orderMatcher.find()) {
             String matchedCode = orderMatcher.group();
             Order order = orders.findByCode(matchedCode).orElse(null);
-            if (order == null) {
-                // Thử tìm theo ID số
-                try {
-                    Long id = Long.parseLong(orderMatcher.group(1));
-                    order = orders.findById(id).orElse(null);
-                } catch (Exception ignored) {}
-            }
 
             if (order != null) {
                 if (order.getPaymentStatus() != PaymentStatus.PAID) {
@@ -107,8 +100,8 @@ public class PaymentController {
 
                     log.info("[SePay Webhook] Xác nhận thanh toán thành công cho Đơn hàng #{}", order.getCode());
 
-                    if (order.getCustomerId() != null) {
-                        notifications.reservationConfirmed(order.getReservation()); // hoặc thông báo đơn hàng
+                    if (order.getCustomerId() != null && order.getReservation() != null) {
+                        notifications.reservationConfirmed(order.getReservation());
                     }
                 }
                 processed = true;
@@ -120,12 +113,6 @@ public class PaymentController {
         if (resMatcher.find()) {
             String matchedCode = resMatcher.group();
             Reservation r = reservations.findByCode(matchedCode).orElse(null);
-            if (r == null) {
-                try {
-                    Long id = Long.parseLong(resMatcher.group(1));
-                    r = reservations.findById(id).orElse(null);
-                } catch (Exception ignored) {}
-            }
 
             if (r != null) {
                 r.setDepositAmount(amount);
