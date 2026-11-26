@@ -1,5 +1,6 @@
-name: Backend CD (Build & Docker Image)
+name: Backend CD (Build, Push & Deploy AWS)
 
+# Kích hoạt khi quy trình Backend CI chạy thành công trên nhánh main hoặc chạy thủ công
 on:
   workflow_run:
     workflows: ["Backend CI"]
@@ -8,23 +9,46 @@ on:
       - completed
   workflow_dispatch:
 
+# Hủy lượt chạy cũ nếu có commit mới liên tục vào main
 concurrency:
   group: backend-cd-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-docker:
-    name: Build & Verify Docker Image
+  # Job 1: Build Docker Image và đẩy lên kho Docker Hub
+  build-and-push:
+    name: Build & Push Docker Image
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
+      # 1. Kéo mã nguồn về máy ảo theo commit của workflow CI vừa hoàn tất
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || github.event.workflow_run.head_sha }}
 
+      # 2. Cài đặt Java 17 và nạp bộ nhớ đệm Maven
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      # 3. Cấp quyền thực thi cho Maven Wrapper
+      - name: Make Maven wrapper executable
+        run: chmod +x mvnw
+
+      # 4. Đóng gói ra file JAR thành phẩm
+      - name: Package JAR
+        run: ./mvnw clean package -DskipTests
+
+      # 5. Cài đặt công cụ Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # 6. Kiểm tra secret Docker Hub
       - name: Check Docker Hub secret
         id: check-dockerhub
         env:
@@ -36,6 +60,7 @@ jobs:
             echo "has_dockerhub=false" >> $GITHUB_OUTPUT
           fi
 
+      # 7. Đăng nhập vào Docker Hub bằng GitHub Secrets
       - name: Log in to Docker Hub
         if: steps.check-dockerhub.outputs.has_dockerhub == 'true'
         uses: docker/login-action@v3
@@ -43,6 +68,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # 8. Build Image từ Dockerfile và đẩy lên kho Docker Hub
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
         with:
@@ -55,26 +81,15 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy-aws:
-    name: Deploy to Server
-    needs: build-docker
+  # Job 2: SSH vào máy chủ AWS EC2 để kéo image mới và restart container
+  deploy-to-aws:
+    name: Deploy to AWS EC2
+    needs: build-and-push
     runs-on: ubuntu-latest
+    if: ${{ secrets.EC2_HOST != '' }}
+
     steps:
-      - name: Check EC2 secret & Deploy
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
-          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-        run: |
-          if [ -z "$EC2_HOST" ]; then
-            echo "Khong co secret EC2_HOST. Bo qua buoc deploy production."
-            exit 0
-          fi
-          echo "Trien khai den may chu EC2..."
-      - name: Deploy container via SSH
-        if: env.EC2_HOST != ''
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
+      - name: SSH and Deploy Container on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}

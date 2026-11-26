@@ -15,6 +15,7 @@ services:
 
   backend:
     build: .
+    image: ${DOCKER_IMAGE:-dineflow-backend:latest}
     container_name: dineflow-backend
     restart: always
     ports:
