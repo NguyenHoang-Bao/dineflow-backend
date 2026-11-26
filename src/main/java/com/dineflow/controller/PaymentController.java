@@ -46,8 +46,8 @@ public class PaymentController {
     @Value("${sepay.api-key:}")
     private String sepayApiKey;
 
-    private static final Pattern ORDER_CODE_PATTERN = Pattern.compile("(?i)(?:OD\\d{6}-\\d{4}|DF-ORD-\\d+|ORD-?\\d+)");
-    private static final Pattern RES_CODE_PATTERN = Pattern.compile("(?i)(?:DF-\\d{4,6}|DF-RES-\\d+|RES-?\\d+)");
+    private static final Pattern ORDER_CODE_PATTERN = Pattern.compile("(?i)(?:OD[-\\s]?\\d{6}[-\\s]?\\d{4}|OD\\d{6}-\\d{4}|DF-ORD-\\d+|ORD-?\\d+)");
+    private static final Pattern RES_CODE_PATTERN = Pattern.compile("(?i)(?:DF[-\\s]?\\d{4,6}|DF-RES-\\d+|RES-?\\d+)");
 
     /**
      * POST /api/payment/sepay-webhook
@@ -111,8 +111,11 @@ public class PaymentController {
         // 4. Phân tích cú pháp: Kiểm tra Lượt đặt bàn (Reservation)
         Matcher resMatcher = RES_CODE_PATTERN.matcher(content);
         if (resMatcher.find()) {
-            String matchedCode = resMatcher.group();
+            String matchedCode = resMatcher.group().toUpperCase().replaceAll("\\s+", "-");
             Reservation r = reservations.findByCode(matchedCode).orElse(null);
+            if (r == null && !matchedCode.contains("-") && matchedCode.startsWith("DF")) {
+                r = reservations.findByCode("DF-" + matchedCode.substring(2)).orElse(null);
+            }
 
             if (r != null) {
                 r.setDepositAmount(amount);

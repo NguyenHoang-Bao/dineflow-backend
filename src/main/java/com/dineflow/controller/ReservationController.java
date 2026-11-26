@@ -184,10 +184,10 @@ public class ReservationController {
             r.setPreOrderPayment(lines.isEmpty() ? null : PaymentMethod.of(in.str("pre_order_payment")));
         }
         double deposit = Reservation.calculateDeposit(r.getPreOrderItems());
-        if (deposit > 0) {
-            r.setDepositAmount(BigDecimal.valueOf(deposit));
-            r.setDepositPaidAt(Instant.now());
-        } else {
+        if (deposit > 0 && r.getDepositPaidAt() == null) {
+            return error("Lượt đặt bàn này yêu cầu thanh toán cọc qua ngân hàng. Vui lòng quét mã QR SePay để hoàn tất.", 422, null);
+        }
+        if (deposit == 0) {
             r.setDepositAmount(null);
             r.setDepositPaidAt(null);
         }
