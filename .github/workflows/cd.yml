@@ -22,7 +22,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      # 1. Kéo mã nguồn về máy ảo theo commit của workflow CI vừa hoàn tất
+      # 1. Kéo mã nguồn về máy ảo
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -58,9 +58,10 @@ jobs:
             echo "has_dockerhub=true" >> $GITHUB_OUTPUT
           else
             echo "has_dockerhub=false" >> $GITHUB_OUTPUT
+            echo "Chua cau hinh secret DOCKERHUB_USERNAME. Image se duoc build kiem tra cuc bo tren runner."
           fi
 
-      # 7. Đăng nhập vào Docker Hub bằng GitHub Secrets
+      # 7. Đăng nhập vào Docker Hub bằng GitHub Secrets (nếu đã cấu hình)
       - name: Log in to Docker Hub
         if: steps.check-dockerhub.outputs.has_dockerhub == 'true'
         uses: docker/login-action@v3
@@ -86,10 +87,22 @@ jobs:
     name: Deploy to AWS EC2
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: ${{ secrets.EC2_HOST != '' }}
 
     steps:
+      - name: Check EC2 secret
+        id: check-ec2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          if [ -n "$EC2_HOST" ]; then
+            echo "has_ec2=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_ec2=false" >> $GITHUB_OUTPUT
+            echo "Chua cau hinh secret EC2_HOST. Bo qua buoc deploy production."
+          fi
+
       - name: SSH and Deploy Container on EC2
+        if: steps.check-ec2.outputs.has_ec2 == 'true'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
