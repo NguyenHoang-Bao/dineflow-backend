@@ -2,6 +2,7 @@ package com.dineflow.controller;
 
 import com.dineflow.config.AppProperties;
 import com.dineflow.config.LoyaltyConfig;
+import com.dineflow.security.Public;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +15,7 @@ import java.util.Map;
 import static com.dineflow.common.ApiResponse.ok;
 
 /** GET /api/settings — tài khoản nhận chuyển khoản (VietQR) và quy tắc thành viên. */
+@Public
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor

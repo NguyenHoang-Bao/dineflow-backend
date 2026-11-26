@@ -25,13 +25,13 @@ public class AppProperties {
     private String restaurantName;
     @Value("${restaurant.timezone}")
     private String restaurantTimezone;
-    @Value("${restaurant.bank.code}")
+    @Value("${restaurant.bank.code:MBBank}")
     private String bankCode;
-    @Value("${restaurant.bank.name}")
+    @Value("${restaurant.bank.name:MBBank}")
     private String bankName;
-    @Value("${restaurant.bank.account-no}")
+    @Value("${restaurant.bank.account-no:14580886868}")
     private String bankAccountNo;
-    @Value("${restaurant.bank.account-name}")
+    @Value("${restaurant.bank.account-name:NGUYEN HOANG BAO}")
     private String bankAccountName;
 
     @Value("${app.mail.mode:log}")
