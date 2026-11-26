@@ -9,13 +9,13 @@ services:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: dineflow
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3307:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - dineflow_mysql_data:/var/lib/mysql
 
   backend:
     build: .
-    image: ${DOCKER_IMAGE:-dineflow-backend:latest}
+    image: hoangbao10/dineflow-backend:latest
     container_name: dineflow-backend
     restart: always
     ports:
@@ -30,4 +30,4 @@ services:
       - mysql
 
 volumes:
-  mysql_data:
+  dineflow_mysql_data:
