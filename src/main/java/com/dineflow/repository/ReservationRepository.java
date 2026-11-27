@@ -27,7 +27,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findNoShows(@Param("upcoming") ReservationStatus upcoming, @Param("before") Instant before);
 
     @Modifying
-    @Query("update Reservation r set r.status = :cancelled where r.id = :id and r.status = :upcoming")
+    @Query("update Reservation r set r.status = :cancelled, r.updatedAt = CURRENT_TIMESTAMP where r.id = :id and r.status = :upcoming")
     int cancelIfUpcoming(@Param("id") Long id, @Param("upcoming") ReservationStatus upcoming, @Param("cancelled") ReservationStatus cancelled);
 
     /** Lượt đặt đang chiếm bàn (sắp tới và đã xác nhận hoặc còn hạn giữ), giờ hẹn trong [from, to]. */
@@ -62,4 +62,13 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findUpcomingFor2hReminder(@Param("status") ReservationStatus status,
                                                 @Param("now") Instant now,
                                                 @Param("maxTime") Instant maxTime);
+
+    /** Các lượt đặt đã bị hủy mà khách đã đóng cọc -> tiền cọc giữ lại tính vào doanh thu nhà hàng. */
+    @Query("select r from Reservation r where r.status = :cancelled and r.depositPaidAt is not null"
+            + " and r.depositAmount is not null and r.depositAmount > 0"
+            + " and ((r.updatedAt is not null and r.updatedAt >= :from and r.updatedAt < :to)"
+            + " or (r.updatedAt is null and r.depositPaidAt >= :from and r.depositPaidAt < :to))")
+    List<Reservation> findCancelledWithDeposit(@Param("cancelled") ReservationStatus cancelled,
+                                               @Param("from") Instant from,
+                                               @Param("to") Instant to);
 }

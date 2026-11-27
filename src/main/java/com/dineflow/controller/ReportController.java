@@ -3,12 +3,15 @@ package com.dineflow.controller;
 import com.dineflow.common.Input;
 import com.dineflow.common.Times;
 import com.dineflow.entity.Invoice;
+import com.dineflow.entity.Reservation;
 import com.dineflow.enums.InvoiceStatus;
 import com.dineflow.enums.OrderStatus;
+import com.dineflow.enums.ReservationStatus;
 import com.dineflow.enums.UserRole;
 import com.dineflow.repository.InvoiceRepository;
 import com.dineflow.repository.OrderItemRepository;
 import com.dineflow.repository.OrderRepository;
+import com.dineflow.repository.ReservationRepository;
 import com.dineflow.security.Roles;
 import com.dineflow.service.ReportExporter;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +43,7 @@ public class ReportController {
     private final InvoiceRepository invoices;
     private final OrderRepository orders;
     private final OrderItemRepository orderItems;
+    private final ReservationRepository reservations;
 
     /** GET /api/reports/overview — số liệu cho Dashboard. */
     @GetMapping("/overview")
@@ -52,9 +56,20 @@ public class ReportController {
         ZonedDateTime firstDay = today.minusDays(6);
 
         List<Invoice> list = invoices.findPaidBetween(InvoiceStatus.PAID, firstMonth.toInstant(), FAR_FUTURE);
-        Sum sum = (from, to) -> Invoice.sumRevenue(list.stream()
-                .filter(i -> !i.getPaidAt().isBefore(from.toInstant()) && (to == null || i.getPaidAt().isBefore(to.toInstant())))
-                .toList());
+        List<Reservation> cancelled = reservations.findCancelledWithDeposit(ReservationStatus.CANCELLED, firstMonth.toInstant(), FAR_FUTURE);
+        Sum sum = (from, to) -> {
+            double invRev = Invoice.sumRevenue(list.stream()
+                    .filter(i -> !i.getPaidAt().isBefore(from.toInstant()) && (to == null || i.getPaidAt().isBefore(to.toInstant())))
+                    .toList());
+            double depRev = cancelled.stream()
+                    .filter(r -> {
+                        Instant t = r.getUpdatedAt() != null ? r.getUpdatedAt() : r.getDepositPaidAt();
+                        return t != null && !t.isBefore(from.toInstant()) && (to == null || t.isBefore(to.toInstant()));
+                    })
+                    .mapToDouble(r -> r.getDepositAmount() != null ? r.getDepositAmount().doubleValue() : 0.0)
+                    .sum();
+            return invRev + depRev;
+        };
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("today_revenue", sum.of(today, null));
@@ -92,14 +107,25 @@ public class ReportController {
         ZonedDateTime from = fromDay.atStartOfDay(Times.tz());
         ZonedDateTime to = toDay.atStartOfDay(Times.tz());
         List<Invoice> list = invoices.findPaidBetween(InvoiceStatus.PAID, from.toInstant(), to.plusDays(1).toInstant());
-        Sum sum = (a, b) -> Invoice.sumRevenue(list.stream()
-                .filter(i -> !i.getPaidAt().isBefore(a.toInstant()) && (b == null || i.getPaidAt().isBefore(b.toInstant())))
-                .toList());
+        List<Reservation> cancelled = reservations.findCancelledWithDeposit(ReservationStatus.CANCELLED, from.toInstant(), to.plusDays(1).toInstant());
+        Sum sum = (a, b) -> {
+            double invRev = Invoice.sumRevenue(list.stream()
+                    .filter(i -> !i.getPaidAt().isBefore(a.toInstant()) && (b == null || i.getPaidAt().isBefore(b.toInstant())))
+                    .toList());
+            double depRev = cancelled.stream()
+                    .filter(r -> {
+                        Instant t = r.getUpdatedAt() != null ? r.getUpdatedAt() : r.getDepositPaidAt();
+                        return t != null && !t.isBefore(a.toInstant()) && (b == null || t.isBefore(b.toInstant()));
+                    })
+                    .mapToDouble(r -> r.getDepositAmount() != null ? r.getDepositAmount().doubleValue() : 0.0)
+                    .sum();
+            return invRev + depRev;
+        };
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("from", fromDay.toString());
         data.put("to", toDay.toString());
-        data.put("total", Invoice.sumRevenue(list));
+        data.put("total", sum.of(from, to.plusDays(1)));
         data.put("revenue_by_day", series(days - 1, from, d -> d.plusDays(1), d -> d.format(DM), sum));
         return ok(data);
     }
