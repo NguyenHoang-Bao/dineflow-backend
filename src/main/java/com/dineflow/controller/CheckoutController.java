@@ -74,9 +74,10 @@ public class CheckoutController {
             }
             Shift shift = open.get(0);
 
-            // 2. Kiểm tra đơn
+            // 2. Kiểm tra đơn (hỗ trợ trường hợp SePay webhook đã cập nhật paymentStatus=PAID trước khi thu ngân chốt hóa đơn)
             Order order = db.lock(found);
-            if (order.isPaid()) throw ApiException.validation("order", "Đơn này đã được thanh toán.");
+            boolean alreadyInvoiced = invoices.findByOrder_Id(order.getId()).isPresent();
+            if (alreadyInvoiced) throw ApiException.validation("order", "Đơn này đã được thanh toán và xuất hóa đơn.");
             if (order.getStatus() == OrderStatus.CANCELLED) throw ApiException.validation("order", "Đơn đã hủy, không thể thanh toán.");
             if (order.getItems().isEmpty()) throw ApiException.validation("order", "Đơn chưa có món nào.");
 

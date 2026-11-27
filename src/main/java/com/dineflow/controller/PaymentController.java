@@ -92,6 +92,13 @@ public class PaymentController {
         if (orderMatcher.find()) {
             String matchedCode = orderMatcher.group();
             Order order = orders.findByCode(matchedCode).orElse(null);
+            if (order == null && matchedCode.toUpperCase().startsWith("OD")) {
+                String clean = matchedCode.toUpperCase().replaceAll("[^A-Z0-9]", "");
+                if (clean.length() == 12) {
+                    String withDash = clean.substring(0, 8) + "-" + clean.substring(8);
+                    order = orders.findByCode(withDash).orElse(null);
+                }
+            }
 
             if (order != null) {
                 if (order.getPaymentStatus() != PaymentStatus.PAID) {
