@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -59,6 +60,8 @@ public class TableAdminController {
         t.setNumber(in.str("number"));
         t.setArea(in.str("area"));
         t.setCapacity(in.integer("capacity"));
+        Double deposit = in.num("deposit_amount");
+        t.setDepositAmount(deposit != null ? BigDecimal.valueOf(deposit) : BigDecimal.ZERO);
         t.setStatus(TableStatus.EMPTY);
         t.setIsLocked(false);
         t.setIsActive(true);
@@ -78,6 +81,10 @@ public class TableAdminController {
         }
         if (in.has("area")) t.setArea(in.str("area"));
         if (in.has("capacity")) t.setCapacity(in.integer("capacity"));
+        if (in.has("deposit_amount")) {
+            Double dep = in.num("deposit_amount");
+            t.setDepositAmount(dep != null ? BigDecimal.valueOf(dep) : BigDecimal.ZERO);
+        }
         tables.save(t);
         return ok(res.table(t), "Cập nhật thành công");
     }

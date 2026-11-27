@@ -135,6 +135,18 @@ public class ReservationController {
             n.setHoldExpiresAt(in.bool("hold") ? Instant.now().plus(HOLD_MINUTES, ChronoUnit.MINUTES) : null);
             n.setPreOrderItems(lines.isEmpty() ? null : new ArrayList<>(lines));
             n.setPreOrderPayment(lines.isEmpty() ? null : PaymentMethod.of(in.str("pre_order_payment")));
+
+            // Tiền cọc = cọc giữ bàn của các bàn đã chọn + cọc món đặt trước (50%)
+            double tableDeposit = 0.0;
+            for (DiningTable t : ts) {
+                if (t.getDepositAmount() != null) {
+                    tableDeposit += t.getDepositAmount().doubleValue();
+                }
+            }
+            double foodDeposit = Reservation.calculateDeposit(lines);
+            double deposit = tableDeposit + foodDeposit;
+            n.setDepositAmount(deposit > 0 ? BigDecimal.valueOf(deposit) : null);
+
             return reservations.save(n);
         });
 
@@ -183,13 +195,24 @@ public class ReservationController {
             r.setPreOrderItems(lines.isEmpty() ? null : new ArrayList<>(lines));
             r.setPreOrderPayment(lines.isEmpty() ? null : PaymentMethod.of(in.str("pre_order_payment")));
         }
-        double deposit = Reservation.calculateDeposit(r.getPreOrderItems());
+        // Tiền cọc = cọc giữ bàn + cọc món (50%)
+        double tableDeposit = 0.0;
+        for (Long tid : r.getTableIds()) {
+            DiningTable dt = tables.findById(tid).orElse(null);
+            if (dt != null && dt.getDepositAmount() != null) {
+                tableDeposit += dt.getDepositAmount().doubleValue();
+            }
+        }
+        double foodDeposit = Reservation.calculateDeposit(r.getPreOrderItems());
+        double deposit = tableDeposit + foodDeposit;
         if (deposit > 0 && r.getDepositPaidAt() == null) {
             return error("Lượt đặt bàn này yêu cầu thanh toán cọc qua ngân hàng. Vui lòng quét mã QR SePay để hoàn tất.", 422, null);
         }
         if (deposit == 0) {
             r.setDepositAmount(null);
             r.setDepositPaidAt(null);
+        } else {
+            r.setDepositAmount(BigDecimal.valueOf(deposit));
         }
         reservations.save(r);
         notifications.reservationConfirmed(r);

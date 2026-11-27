@@ -131,6 +131,7 @@ public class Resources {
         m.put("next_reservation", extra == null ? null : extra.get("next_reservation"));
         m.put("is_locked", Boolean.TRUE.equals(t.getIsLocked()));
         m.put("is_active", Boolean.TRUE.equals(t.getIsActive()));
+        m.put("deposit_amount", t.getDepositAmount() != null ? t.getDepositAmount().doubleValue() : 0.0);
         return m;
     }
 

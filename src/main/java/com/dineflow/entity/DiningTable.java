@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 /** Bàn ăn (bảng `tables`). */
@@ -21,6 +22,10 @@ public class DiningTable extends BaseEntity {
 
     @Column(nullable = false)
     private Integer capacity = 4;
+
+    /** Tiền cọc giữ bàn (VNĐ), 0 = không yêu cầu cọc */
+    @Column(name = "deposit_amount", precision = 12, scale = 2)
+    private BigDecimal depositAmount = BigDecimal.ZERO;
 
     @Column(nullable = false, length = 20)
     private TableStatus status = TableStatus.EMPTY;
