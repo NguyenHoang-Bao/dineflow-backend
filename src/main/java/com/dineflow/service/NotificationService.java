@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /** Tạo nhanh thông báo in-app cho khách và tự động gửi Push Notification qua Firebase FCM. */
 @Slf4j
@@ -31,7 +33,7 @@ public class NotificationService {
         n.setData(Map.of("reservation_id", reservationId));
         AppNotification saved = repo.save(n);
 
-        // Tự động Push Notification qua Firebase tới máy khách hàng
+        // Tự động Push Notification qua Firebase tới máy khách hàng (chờ 10 giây để người dùng kịp ẩn app và xem demo chuông)
         try {
             if (customerId != null) {
                 User user = userRepository.findById(customerId).orElse(null);
@@ -42,7 +44,15 @@ public class NotificationService {
                     if (reservationId != null) {
                         data.put("reservation_id", String.valueOf(reservationId));
                     }
-                    fcmService.sendPush(user.getFcmToken(), title, body, data);
+                    String targetToken = user.getFcmToken();
+                    log.info("[FCM] Đã kích hoạt sự kiện '{}'. Đang hẹn giờ gửi Push Notification sau 10 giây để demo...", type);
+                    CompletableFuture.runAsync(() -> {
+                        try {
+                            fcmService.sendPush(targetToken, title, body, data);
+                        } catch (Exception e) {
+                            log.warn("[FCM] Bỏ qua lỗi gửi push: {}", e.getMessage());
+                        }
+                    }, CompletableFuture.delayedExecutor(10, TimeUnit.SECONDS));
                 }
             }
         } catch (Exception e) {
